@@ -479,18 +479,112 @@ function generateQuestions(para) {
     }
   }
 
-  // ─── TYPE 7: True/False on a specific sentence ───
-  if (sentences.length >= 2) {
-    const validSentences = sentences.filter(s => s.length > 30 && s.length < 200);
-    if (validSentences.length >= 1) {
-      const correctSent = shuffle(validSentences)[0].substring(0, 100) + '...';
+  // ─── TYPE 7: True/False – multiple variants ───
+  const validSentences = sentences.filter(s => s.length > 30 && s.length < 200);
+  
+  // TF1: Direct quote from the text → RICHTIG
+  if (validSentences.length >= 1) {
+    const realSnippet = shuffle(validSentences)[0].replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().substring(0, 120) + '...';
+    questions.push(makeQuestion(
+      `Richtig oder falsch? "${realSnippet}"`,
+      '✅ Richtig',
+      ['❌ Falsch'],
+      `Überprüfe, ob diese Aussage wörtlich oder sinngemäß im Gesetzestext vorkommt.`,
+      `✅ Diese Aussage ist RICHTIG – sie stammt (sinngemäß) aus § ${num}.`
+    ));
+  }
+  
+  // TF2: Take a real sentence and systematically modify a key piece → FALSCH
+  const roleReplacements = [
+    { from: 'Schulleiter', to: 'Klassenvorstand' },
+    { from: 'Schulleiterin', to: 'Klassenlehrerin' },
+    { from: 'Bundesminister', to: 'Schulbehörde' },
+    { from: 'Schulbehörde', to: 'Schulleiter' },
+    { from: 'Schulkonferenz', to: 'Klassenkonferenz' },
+    { from: 'Klassenvorstand', to: 'Schulleiter' },
+    { from: 'Schüler', to: 'Lehrer' },
+    { from: 'Lehrer', to: 'Schüler' },
+    { from: 'Erziehungsberechtigten', to: 'Schülern' },
+    { from: 'ordentlicher', to: 'außerordentlicher' },
+    { from: 'ordentlichen', to: 'außerordentlichen' },
+    { from: 'außerordentlicher', to: 'ordentlicher' },
+    { from: 'außerordentlichen', to: 'ordentlichen' },
+    { from: 'zuständige', to: 'örtliche' },
+    { from: 'zuständigen', to: 'örtlichen' },
+  ];
+  
+  for (const rr of shuffle(roleReplacements)) {
+    if (questions.filter(q => q.type === 'tf_modified').length >= 1) break;
+    const match = text.match(new RegExp(rr.from, 'i'));
+    if (match) {
+      const idx = Math.max(0, match.index - 20);
+      const snippet = text.substring(idx, idx + 150).replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+      if (snippet.length > 30) {
+        const modified = snippet.replace(new RegExp(rr.from, 'i'), rr.to);
+        const truncated = modified.length > 130 ? modified.substring(0, 130) + '...' : modified;
+        questions.push(makeQuestion(
+          `Richtig oder falsch? "${truncated}"`,
+          '❌ Falsch',
+          ['✅ Richtig'],
+          `Achte besonders auf die handelnden Personen/Rollen – wurde etwas vertauscht?`,
+          `❌ Diese Aussage ist FALSCH. Im Gesetzestext steht hier "${rr.from}", nicht "${rr.to}".`
+        ));
+      }
+    }
+  }
+  
+  // TF3: Fabricated plausible-sounding rule → FALSCH
+  const fakeRules = [
+    'Die Schule kann bei Verstößen gegen die Schulordnung eine Geldstrafe verhängen',
+    'Schüler haben das Recht, den Unterricht ab der 9. Schulstufe eigenständig abzuwählen',
+    'Der Schulleiter wird von den Eltern der Schüler gewählt',
+    'Noten können von Schülern durch eine zusätzliche Prüfung verbessert werden',
+    'Jede Schule muss mindestens zwei Schulärzte beschäftigen',
+    'Schüler dürfen maximal drei Fehltage pro Semester haben',
+    'Die Schulaufsicht wird von den Eltern organisiert',
+    'Lehrer müssen einmal jährlich eine Prüfung ablegen',
+    'Schulen dürfen die Aufnahmegebühren frei festlegen',
+    'Die Klassengröße darf maximal 35 Schüler betragen',
+    'Der Klassenvorstand wird von den Schülern gewählt',
+    'Eltern haben das Recht, den Unterricht ihrer Kinder jederzeit zu besuchen',
+    'Schüler müssen eine uniforme Schulkleidung tragen',
+    'Die Schulkonferenz tagt mindestens einmal pro Woche',
+    'Jeder Lehrer darf die Noten nach eigenem Ermessen festlegen ohne Bindung an den Lehrplan',
+    'Die Schule darf bei schlechten Leistungen eine Nachhilfegebühr verlangen',
+    'Schüler müssen jedes Jahr eine Wiederholungsprüfung in Mathematik ablegen',
+    'Der Schulerhalter ernennt die Lehrpersonen persönlich',
+  ];
+  
+  for (const fake of shuffle(fakeRules)) {
+    if (questions.filter(q => q.type === 'tf_fake').length >= 1) break;
+    if (!text.toLowerCase().includes(fake.substring(0, 20).toLowerCase())) {
       questions.push(makeQuestion(
-        `Ist folgende Aussage korrekt? "${correctSent}"`,
-        'Ja, diese Aussage ist korrekt',
-        ['Nein, diese Aussage ist nicht korrekt', 'Die Aussage ist erfunden', 'Das Gesetz enthält dazu keine Aussage'],
-        `Vergleiche die Aussage mit dem Originaltext des Paragraphen.`,
-        `Diese Aussage ist eine sinngemäße Wiedergabe aus § ${num}: "${correctSent}"`
+        `Richtig oder falsch? "${fake}"`,
+        '❌ Falsch',
+        ['✅ Richtig'],
+        `Diese Regel klingt vielleicht plausibel, aber kommt sie tatsächlich in § ${num} vor?`,
+        `❌ Diese Aussage ist FALSCH. Sie stammt nicht aus § ${num} und ist kein Bestandteil des Schulunterrichtsgesetzes.`
       ));
+    }
+  }
+  
+  // TF4: Negate a real rule → FALSCH
+  if (validSentences.length >= 2) {
+    const baseSent = validSentences.filter(s => 
+      !s.includes('nicht') && !s.includes('kein') && s.length > 25 && s.length < 120
+    );
+    if (baseSent.length >= 1) {
+      const sent = shuffle(baseSent)[0].replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().substring(0, 100);
+      const negated = `Nicht ${sent.charAt(0).toLowerCase() + sent.slice(1)}`;
+      if (negated.length < 130) {
+        questions.push(makeQuestion(
+          `Richtig oder falsch? "${negated}"`,
+          '❌ Falsch',
+          ['✅ Richtig'],
+          `Wurde hier vielleicht eine Regelung ins Gegenteil verkehrt?`,
+          `❌ Diese Aussage ist FALSCH. Die korrekte Regelung aus § ${num} lautet (sinngemäß): "${sent}..."`
+        ));
+      }
     }
   }
 
