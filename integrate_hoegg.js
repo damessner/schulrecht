@@ -1,12 +1,39 @@
 const fs = require('fs');
 
-// Read and clean text
+// Read and clean text - fix PDF extraction artifacts
 const rawText = fs.readFileSync('hoegg_extracted.txt', 'utf-8');
-const text = rawText
+let text = rawText
   .replace(/\n--- PAGE BREAK ---\n/g, '\n')
-  .replace(/\s+/g, ' ')
-  .replace(/\s{2,}/g, ' ')
   .replace(/(\d)\s+(\d)/g, '$1$2')
+  // Fix PDF artifacts
+  .replace(/S ie\b/g, 'Sie')
+  .replace(/\bS ie\b/g, 'Sie')
+  .replace(/\bA ussage\b/g, 'Aussage')
+  .replace(/\bT a tigkeit/g, 'Tätigkeit')
+  .replace(/\bT atigkeit/g, 'Tätigkeit')
+  .replace(/\bT atigkeiten/g, 'Tätigkeiten')
+  .replace(/\bA ufsicht/g, 'Aufsicht')
+  .replace(/\bE ltern/g, 'Eltern')
+  .replace(/\bH ausaufgabe/g, 'Hausaufgabe')
+  .replace(/\bK lassenarbeit/g, 'Klassenarbeit')
+  .replace(/\bG ericht\b/g, 'Gericht')
+  .replace(/\bG eruchte?\b/g, 'Gerücht')
+  .replace(/\bA rbeit\b/g, 'Arbeit')
+  .replace(/\bG eschenk/g, 'Geschenk')
+  .replace(/\bS chrift\b/g, 'Schrift')
+  .replace(/\bS chule\b/g, 'Schule')
+  .replace(/\bS chuler\b/g, 'Schüler')
+  .replace(/\bL ehrer\b/g, 'Lehrer')
+  .replace(/\bL eistung\b/g, 'Leistung')
+  .replace(/\bN ote\b/g, 'Note')
+  .replace(/\bN oten\b/g, 'Noten')
+  .replace(/\bU nterricht\b/g, 'Unterricht')
+  .replace(/\bV erhalten\b/g, 'Verhalten')
+  .replace(/\bE rgebnis\b/g, 'Ergebnis')
+  .replace(/\bR aum\b/g, 'Raum')
+  .replace(/\bT ur\b/g, 'Tür')
+  .replace(/-\s+/g, '')
+  .replace(/\s{2,}/g, ' ')
   .trim();
 
 // Find all question boundaries
@@ -97,12 +124,16 @@ for (const hq of questions) {
   ];
   
   for (const kp of keyPatterns) {
-    if (qs.length >= 4) break;
+    if (qs.length >= 8) break;
     const matches = [...a.matchAll(kp.regex)];
     for (const match of matches.slice(0, 2)) {
-      const principle = (kp.prefix + match[1].trim()).substring(0, 150);
-      if (principle.length > 40) {
-        const isTrue = !principle.match(/nicht|kein|keine|falsch/i);
+      const principle = (kp.prefix + (match[1]?.trim?.() || '')).substring(0, 150);
+      if (principle.length > 40 && !principle.includes('  ') && principle.split(' ').length >= 8) {
+        // Skip garbled text and fragments
+        const garbledWords = principle.split(' ').filter(w => w.length > 25 || w.match(/^[a-z]+[A-Z][a-z]+$/));
+        if (garbledWords.length > 1) continue;
+        
+        const isTrue = true; // The principle is always how Hoegg states it
         qs.push(createTF(
           `Laut Hoegg: „${principle}“`,
           isTrue,
@@ -121,10 +152,10 @@ for (const hq of questions) {
   ];
   
   for (const mp of misconceptionPatterns) {
-    if (qs.length >= 6) break;
+    if (qs.length >= 10) break;
     const matches = [...a.matchAll(mp.regex)];
     for (const match of matches.slice(0, 1)) {
-      const misconception = match[1].trim().substring(0, 140);
+      const misconception = match[1]?.trim?.() || '';
       if (misconception.length > 30) {
         qs.push(createTF(
           `Häufiger Irrtum unter Lehrkräften: „${misconception}“`,
@@ -146,7 +177,7 @@ for (const hq of questions) {
     if (qs.length >= 8) break;
     const matches = [...a.matchAll(ap.regex)];
     for (const match of matches.slice(0, 2)) {
-      const advice = match[1].trim();
+      const advice = (match[1]?.trim?.() || '');
       if (advice.length > 30 && advice.length < 180) {
         const fakeAdvice = shuffle([
           'Sie sollten die Angelegenheit sofort der Schulbehörde melden',
@@ -174,7 +205,7 @@ for (const hq of questions) {
     if (qs.length >= 10) break;
     const matches = [...a.matchAll(ep.regex)];
     for (const match of matches.slice(0, 1)) {
-      const exception = match[1].trim();
+      const exception = (match[1]?.trim?.() || '');
       if (exception.length > 30 && exception.length < 160) {
         qs.push(createTF(
           `Es gibt eine wichtige Ausnahme: „${exception}“`,
@@ -200,7 +231,7 @@ for (const hq of questions) {
   }
   
   // Shuffle and take up to 10 per question
-  const selected = shuffle(qs).slice(0, 10);
+  const selected = shuffle(qs).slice(0, 20);
   allMC.push(...selected);
 }
 
@@ -208,6 +239,9 @@ console.log(`Generated ${allMC.length} quiz questions total`);
 
 // Add as new category to JSON
 const data = JSON.parse(fs.readFileSync('schug-data.json', 'utf-8'));
+
+// Remove any existing Hoegg category
+data.categories = data.categories.filter(c => c.id !== 20);
 
 data.categories.push({
   id: 20,
