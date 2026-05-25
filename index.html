@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SchUG Quiz – Schulunterrichtsgesetz</title>
+<style>
+/* ─── RESET & BASE ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh;line-height:1.6}
+
+/* ─── COLORS ─── */
+:root{
+  --primary:#2b6cb0;--primary-light:#ebf4ff;--primary-dark:#1a365d;
+  --accent:#38a169;--accent-light:#c6f6d5;
+  --wrong:#e53e3e;--wrong-light:#fed7d7;
+  --warning:#d69e2e;--warning-light:#fefcbf;
+  --gray-50:#f7fafc;--gray-100:#edf2f7;--gray-200:#e2e8f0;
+  --gray-300:#cbd5e0;--gray-500:#718096;--gray-700:#4a5568;--gray-900:#1a202c;
+  --radius:12px;--shadow:0 2px 8px rgba(0,0,0,.08);--shadow-lg:0 8px 30px rgba(0,0,0,.12);
+  --transition:.2s ease;
+}
+
+/* ─── LAYOUT ─── */
+.container{max-width:800px;margin:0 auto;padding:16px}
+header{background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;padding:24px 16px;text-align:center}
+header h1{font-size:1.5rem;font-weight:700}
+header p{font-size:.875rem;opacity:.85;margin-top:4px}
+header .stats{display:flex;justify-content:center;gap:24px;margin-top:12px;font-size:.8rem}
+header .stats span{background:rgba(255,255,255,.15);padding:4px 12px;border-radius:20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 24px;border:none;border-radius:var(--radius);font-size:1rem;
+  font-weight:600;cursor:pointer;transition:all var(--transition);min-height:48px;
+  text-decoration:none}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#2f855a}
+.btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}
+.btn-outline:hover{background:var(--primary-light)}
+.btn-sm{padding:8px 16px;font-size:.875rem;min-height:36px}
+.btn-block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.btn-back{background:rgba(255,255,255,.2);color:#fff;border:none;padding:8px 16px;
+  border-radius:8px;cursor:pointer;font-size:.875rem;margin-right:12px}
+.btn-back:hover{background:rgba(255,255,255,.3)}
+
+/* ─── CARDS ─── */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:20px;margin-bottom:12px;transition:all var(--transition)}
+.card:hover{box-shadow:var(--shadow-lg)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.card-title{font-weight:600;font-size:1.05rem}
+
+/* ─── SCREENS ─── */
+.screen{display:none;animation:fadeIn .3s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes checkmark{0%{opacity:0;transform:scale(0)}50%{transform:scale(1.3)}100%{opacity:1;transform:scale(1)}}
+
+/* ─── SPINNER ─── */
+.spinner{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:300px;gap:16px}
+.spinner-ring{width:48px;height:48px;border:4px solid var(--gray-200);
+  border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── CATEGORY GRID ─── */
+.cat-grid{display:grid;grid-template-columns:1fr;gap:12px;padding:16px 0}
+@media(min-width:600px){.cat-grid{grid-template-columns:1fr 1fr}}
+.cat-card{cursor:pointer;position:relative;overflow:hidden}
+.cat-card .badge{font-size:.7rem;padding:2px 10px;border-radius:12px;font-weight:600}
+.badge-new{background:var(--gray-200);color:var(--gray-500)}
+.badge-progress{background:var(--warning-light);color:#975a16}
+.badge-done{background:var(--accent-light);color:var(--accent)}
+.cat-card .progress-wrap{width:100%;height:4px;background:var(--gray-200);
+  border-radius:2px;margin-top:10px;overflow:hidden}
+.cat-card .progress-fill{height:100%;background:var(--accent);border-radius:2px;
+  transition:width .5s ease}
+.cat-card .meta{display:flex;gap:12px;font-size:.8rem;color:var(--gray-500);margin-top:4px}
+
+/* ─── LEARNING MODE ─── */
+.para-card{border-left:4px solid var(--primary);margin-bottom:12px;
+  transition:all var(--transition)}
+.para-card[data-expanded="true"]{border-left-color:var(--accent)}
+.para-card .para-header{display:flex;justify-content:space-between;align-items:flex-start;
+  cursor:pointer;gap:12px}
+.para-card .para-num{font-weight:700;color:var(--primary);white-space:nowrap}
+.para-card .para-title{font-weight:600;flex:1}
+.para-card .para-text{font-size:.9rem;color:var(--gray-700);margin-top:8px;
+  line-height:1.7;max-height:0;overflow:hidden;transition:max-height .4s ease}
+.para-card[data-expanded="true"] .para-text{max-height:2000px}
+.para-card .expand-icon{font-size:.8rem;color:var(--gray-500);transition:transform var(--transition)}
+.para-card[data-expanded="true"] .expand-icon{transform:rotate(180deg)}
+
+/* ─── QUIZ MODE ─── */
+.quiz-header{display:flex;align-items:center;margin-bottom:16px;gap:12px}
+.quiz-progress{flex:1;height:8px;background:var(--gray-200);border-radius:4px;overflow:hidden}
+.quiz-progress-fill{height:100%;background:var(--primary);border-radius:4px;
+  transition:width .4s ease}
+.quiz-counter{font-size:.8rem;color:var(--gray-500);white-space:nowrap}
+.quiz-question{font-size:1.1rem;font-weight:600;margin-bottom:20px;line-height:1.5}
+.quiz-options{display:flex;flex-direction:column;gap:10px}
+.quiz-option{text-align:left;padding:16px 20px;border:2px solid var(--gray-200);
+  border-radius:var(--radius);background:#fff;cursor:pointer;font-size:.95rem;
+  transition:all var(--transition);min-height:52px}
+.quiz-option:hover:not(.disabled){border-color:var(--primary);background:var(--primary-light)}
+.quiz-option.selected-correct{border-color:var(--accent)!important;background:var(--accent-light)!important}
+.quiz-option.selected-wrong{border-color:var(--wrong)!important;background:var(--wrong-light)!important}
+.quiz-option.show-correct{border-color:var(--accent)!important;background:var(--accent-light)!important}
+.quiz-option.disabled{cursor:default;pointer-events:none}
+
+/* ─── FEEDBACK ─── */
+.quiz-feedback{margin-top:16px;padding:16px;border-radius:var(--radius);
+  animation:slideUp .3s ease}
+.quiz-feedback.correct{background:var(--accent-light);border:1px solid var(--accent)}
+.quiz-feedback.wrong{background:var(--wrong-light);border:1px solid var(--wrong)}
+.quiz-feedback .fb-icon{font-size:1.5rem;margin-right:8px}
+.quiz-feedback .fb-title{font-weight:700;font-size:1rem}
+.quiz-feedback .fb-detail{margin-top:8px;font-size:.9rem;line-height:1.5}
+.quiz-feedback .fb-hint{background:rgba(255,255,255,.7);padding:10px 12px;
+  border-radius:8px;margin-top:8px;font-size:.85rem;border-left:3px solid var(--warning)}
+
+/* ─── RESULTS ─── */
+.result-box{text-align:center;padding:32px 16px}
+.result-box .score{font-size:3rem;font-weight:800;color:var(--primary)}
+.result-box .score-label{font-size:1rem;color:var(--gray-500);margin-top:4px}
+.result-box .emoji{font-size:4rem;margin-bottom:16px}
+.result-actions{display:flex;flex-direction:column;gap:10px;margin-top:24px}
+
+/* ─── FINAL BADGE ─── */
+.final-locked{filter:grayscale(0.6);opacity:.6;cursor:not-allowed!important}
+
+/* ─── EMPTY STATE ─── */
+.empty-state{text-align:center;padding:48px 16px;color:var(--gray-500)}
+.empty-state .icon{font-size:3rem;margin-bottom:12px}
+
+/* ─── UTILITIES ─── */
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}
+.text-center{text-align:center}
+.flex-center{display:flex;align-items:center;justify-content:center}
+.gap-8{gap:8px}
+.hidden{display:none!important}
+
+/* ─── FOOTER ─── */
+footer{text-align:center;padding:24px 16px;font-size:.75rem;color:var(--gray-500);border-top:1px solid var(--gray-200);margin-top:32px}
+
+/* ─── DARK MODE SUPPORT ─── */
+@media(prefers-color-scheme:dark){
+  body{background:#1a202c;color:#e2e8f0}
+  .card,.quiz-option{background:#2d3748;border-color:#4a5568}
+  .quiz-option:hover:not(.disabled){border-color:var(--primary);background:#2b6cb033}
+  .quiz-option.selected-correct{background:#276749!important;border-color:var(--accent)!important}
+  .quiz-option.selected-wrong{background:#742a2a!important;border-color:var(--wrong)!important}
+  .quiz-option.show-correct{background:#276749!important;border-color:var(--accent)!important}
+  .para-card .para-text{color:#a0aec0}
+  .cat-card .meta{color:#a0aec0}
+  .badge-new{background:#4a5568;color:#cbd5e0}
+  .quiz-feedback.correct{background:#276749;border-color:var(--accent)}
+  .quiz-feedback.wrong{background:#742a2a;border-color:var(--wrong)}
+  .quiz-feedback .fb-hint{background:#4a5568}
+  .spinner-ring{border-color:#4a5568;border-top-color:var(--primary)}
+  .result-box .score-label{color:#a0aec0}
+  footer{color:#718096;border-color:#2d3748}
+  header{background:linear-gradient(135deg,#1a365d,#2b6cb0)}
+}
+</style>
+</head>
+<body>
+
+<header id="appHeader">
+  <div class="container">
+    <h1>📚 SchUG Quiz</h1>
+    <p>Schulunterrichtsgesetz – interaktiv lernen &amp; testen</p>
+    <div class="stats" id="headerStats">
+      <span id="statCategories">0 Kategorien</span>
+      <span id="statQuestions">0 Fragen</span>
+      <span id="statProgress">0%</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- SCREEN: Loading -->
+<div class="screen active" id="screenLoading">
+  <div class="spinner">
+    <div class="spinner-ring"></div>
+    <p>Lade Gesetzestext...</p>
+  </div>
+</div>
+
+<!-- SCREEN: Overview -->
+<div class="screen" id="screenOverview">
+  <div class="cat-grid" id="categoryGrid"></div>
+  <div style="margin-top:16px">
+    <button class="btn btn-accent btn-block" id="btnFinalQuiz" disabled>
+      🏆 Finale Prüfung – alle falschen Fragen wiederholen
+    </button>
+  </div>
+</div>
+
+<!-- SCREEN: Learning -->
+<div class="screen" id="screenLearn">
+  <div style="display:flex;align-items:center;margin-bottom:12px;padding-top:12px">
+    <button class="btn-back" id="btnLearnBack">← Zurück</button>
+    <span style="font-weight:600;flex:1" id="learnTitle"></span>
+    <span style="font-size:.8rem;color:var(--gray-500)" id="learnCount"></span>
+  </div>
+  <div id="learnContent"></div>
+  <button class="btn btn-primary btn-block mt-16" id="btnStartQuiz">Zum Quiz →</button>
+</div>
+
+<!-- SCREEN: Quiz -->
+<div class="screen" id="screenQuiz">
+  <div class="quiz-header">
+    <button class="btn-back" id="btnQuizBack">←</button>
+    <div class="quiz-progress"><div class="quiz-progress-fill" id="quizProgressFill"></div></div>
+    <span class="quiz-counter" id="quizCounter"></span>
+  </div>
+  <div style="font-size:.8rem;color:var(--gray-500);font-weight:600;margin-bottom:4px" id="quizCategoryLabel"></div>
+  <div class="quiz-question" id="quizQuestion"></div>
+  <div class="quiz-options" id="quizOptions"></div>
+  <div id="quizFeedback" class="hidden"></div>
+  <button class="btn btn-primary btn-block mt-12 hidden" id="btnNextQuestion">Weiter →</button>
+</div>
+
+<!-- SCREEN: Results -->
+<div class="screen" id="screenResults">
+  <div class="result-box" id="resultsContent"></div>
+</div>
+
+</div><!-- /container -->
+
+<footer>
+  Datenquelle: <a href="https://www.ris.bka.gv.at" target="_blank" rel="noopener">RIS – Rechtsinformationssystem des Bundes</a> |
+  Schulunterrichtsgesetz (SchUG), BGBl. Nr. 472/1986, Fassung vom 25.05.2026
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════
+const STORAGE_KEY = 'schug_quiz_progress';
+
+let appData = null;
+let state = {
+  screen: 'loading',
+  currentCategoryIdx: 0,
+  
+  // Per-category state
+  categories: [], // { learned: bool, wrongIds: Set (serialized as array), completed: bool }
+  
+  // Quiz state
+  quizPhase: '', // 'quiz' | 'retry'
+  quizQuestions: [], // current batch of questions
+  quizIndex: 0,
+  quizAnswered: false,
+  
+  // Final quiz
+  finalWrongIds: [], // global wrong question IDs for final exam
+};
+
+// ─── LOCAL STORAGE ───
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.categories && saved.categories.length > 0) {
+        state.categories = saved.categories.map(c => ({
+          ...c,
+          wrongIds: new Set(c.wrongIds || [])
+        }));
+      }
+      if (saved.finalWrongIds) state.finalWrongIds = saved.finalWrongIds;
+    }
+  } catch(e) { /* ignore */ }
+}
+
+function saveProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      categories: state.categories.map(c => ({
+        learned: c.learned || false,
+        wrongIds: [...(c.wrongIds || [])],
+        completed: c.completed || false
+      })),
+      finalWrongIds: state.finalWrongIds || []
+    }));
+  } catch(e) { /* ignore */ }
+}
+
+// ─── QUESTION ID ───
+function qId(catIdx, paraIdx, qIdx) {
+  return `${catIdx}-${paraIdx}-${qIdx}`;
+}
+
+function findQuestionById(id) {
+  const parts = id.split('-').map(Number);
+  if (parts.length !== 3) return null;
+  const [ci, pi, qi] = parts;
+  try {
+    return appData.categories[ci].paragraphs[pi].questions[qi];
+  } catch(e) { return null; }
+}
+
+// ─── SCREEN MANAGEMENT ───
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen' + name.charAt(0).toUpperCase() + name.slice(1));
+  if (el) el.classList.add('active');
+  state.screen = name;
+}
+
+// ─── RENDER OVERVIEW ───
+function renderOverview() {
+  const grid = document.getElementById('categoryGrid');
+  grid.innerHTML = '';
+  
+  let totalQ = 0;
+  let doneCats = 0;
+  
+  appData.categories.forEach((cat, i) => {
+    const catState = state.categories[i] || { learned: false, wrongIds: new Set(), completed: false };
+    if (!state.categories[i]) state.categories[i] = catState;
+    
+    const paraCount = cat.paragraphs.length;
+    let qCount = 0;
+    cat.paragraphs.forEach(p => qCount += p.questions.length);
+    totalQ += qCount;
+    
+    let badgeText, badgeClass;
+    if (catState.completed) {
+      badgeText = '✅ Abgeschlossen';
+      badgeClass = 'badge-done';
+      doneCats++;
+    } else if (catState.wrongIds.size > 0 || catState.learned) {
+      badgeText = '📖 In Bearbeitung';
+      badgeClass = 'badge-progress';
+    } else {
+      badgeText = '⚪ Neu';
+      badgeClass = 'badge-new';
+    }
+    
+    const wrongCount = catState.wrongIds ? catState.wrongIds.size : 0;
+    const totalAttempts = qCount + wrongCount; // approximate
+    const pct = qCount > 0 ? Math.round(((qCount - wrongCount) / qCount) * 100) : 0;
+    
+    const card = document.createElement('div');
+    card.className = 'card cat-card';
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">${cat.title}</span>
+        <span class="badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="meta">
+        <span>📄 ${paraCount} §§</span>
+        <span>❓ ${qCount} Fragen</span>
+        ${catState.completed ? '<span>✅ ${pct}%</span>' : ''}
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-fill" style="width:${catState.completed ? 100 : pct}%"></div>
+      </div>
+    `;
+    card.addEventListener('click', () => startLearning(i));
+    grid.appendChild(card);
+  });
+  
+  document.getElementById('statCategories').textContent = `${appData.categories.length} Kategorien`;
+  document.getElementById('statQuestions').textContent = `${totalQ} Fragen`;
+  const overallPct = totalQ > 0 ? Math.round((doneCats / appData.categories.length) * 100) : 0;
+  document.getElementById('statProgress').textContent = `${overallPct}%`;
+  
+  const allDone = appData.categories.every((_, i) => {
+    const cs = state.categories[i];
+    return cs && cs.completed;
+  });
+  const btnFinal = document.getElementById('btnFinalQuiz');
+  btnFinal.disabled = !allDone;
+  if (allDone) {
+    btnFinal.textContent = `🏆 Finale Prüfung (${(state.finalWrongIds || []).length} offene Fragen)`;
+  }
+}
+
+// ─── LEARNING MODE ───
+function startLearning(catIdx) {
+  state.currentCategoryIdx = catIdx;
+  const cat = appData.categories[catIdx];
+  const cs = state.categories[catIdx] || { learned: false, wrongIds: new Set(), completed: false };
+  if (!state.categories[catIdx]) state.categories[catIdx] = cs;
+  
+  document.getElementById('learnTitle').textContent = cat.title;
+  document.getElementById('learnCount').textContent = `${cat.paragraphs.length} §§ • ${cat.paragraphs.reduce((s,p) => s + p.questions.length, 0)} Fragen`;
+  
+  const content = document.getElementById('learnContent');
+  content.innerHTML = '';
+  
+  cat.paragraphs.forEach((p, pi) => {
+    const div = document.createElement('div');
+    div.className = 'card para-card';
+    div.dataset.expanded = 'false';
+    div.innerHTML = `
+      <div class="para-header" data-para="${pi}">
+        <div>
+          <span class="para-num">§ ${p.number}</span>
+          <span class="para-title">${p.title || '(ohne Titel)'}</span>
+        </div>
+        <span class="expand-icon">▼</span>
+      </div>
+      <div class="para-text">${escapeHtml(p.text)}</div>
+    `;
+    div.querySelector('.para-header').addEventListener('click', () => {
+      const expanded = div.dataset.expanded === 'true';
+      div.dataset.expanded = !expanded;
+    });
+    content.appendChild(div);
+  });
+  
+  cs.learned = true;
+  saveProgress();
+  showScreen('learn');
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+// ─── START QUIZ ───
+function startQuiz(catIdx, retry = false) {
+  state.currentCategoryIdx = catIdx;
+  const cat = appData.categories[catIdx];
+  const cs = state.categories[catIdx];
+  
+  let questions = [];
+  
+  if (retry) {
+    // Retry only wrong questions
+    const wrongIds = [...(cs.wrongIds || [])];
+    wrongIds.forEach(id => {
+      const q = findQuestionById(id);
+      if (q) questions.push({ q, id });
+    });
+    state.quizPhase = 'retry';
+  } else {
+    // All questions
+    cat.paragraphs.forEach((p, pi) => {
+      p.questions.forEach((q, qi) => {
+        questions.push({ q, id: qId(catIdx, pi, qi) });
+      });
+    });
+    state.quizPhase = 'quiz';
+  }
+  
+  // Shuffle
+  questions = shuffle(questions);
+  
+  state.quizQuestions = questions;
+  state.quizIndex = 0;
+  state.quizAnswered = false;
+  
+  document.getElementById('quizCategoryLabel').textContent = 
+    retry ? `${cat.title} – Falsche wiederholen` : cat.title;
+  
+  showScreen('quiz');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  if (state.quizIndex >= state.quizQuestions.length) {
+    showQuizResults();
+    return;
+  }
+  
+  const item = state.quizQuestions[state.quizIndex];
+  const q = item.q;
+  const total = state.quizQuestions.length;
+  const current = state.quizIndex + 1;
+  
+  document.getElementById('quizCounter').textContent = `${current}/${total}`;
+  document.getElementById('quizProgressFill').style.width = `${(current / total) * 100}%`;
+  document.getElementById('quizQuestion').textContent = q.question;
+  
+  const optionsEl = document.getElementById('quizOptions');
+  optionsEl.innerHTML = '';
+  
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-option';
+    btn.textContent = opt;
+    btn.addEventListener('click', () => handleQuizAnswer(i));
+    optionsEl.appendChild(btn);
+  });
+  
+  document.getElementById('quizFeedback').classList.add('hidden');
+  document.getElementById('quizFeedback').innerHTML = '';
+  document.getElementById('btnNextQuestion').classList.add('hidden');
+  state.quizAnswered = false;
+}
+
+function handleQuizAnswer(selected) {
+  if (state.quizAnswered) return;
+  state.quizAnswered = true;
+  
+  const item = state.quizQuestions[state.quizIndex];
+  const q = item.q;
+  const isCorrect = selected === q.correct;
+  
+  // Mark options
+  const options = document.querySelectorAll('.quiz-option');
+  options.forEach((opt, i) => {
+    opt.classList.add('disabled');
+    if (i === q.correct) opt.classList.add('show-correct');
+    if (i === selected && !isCorrect) opt.classList.add('selected-wrong');
+    if (i === selected && isCorrect) opt.classList.add('selected-correct');
+  });
+  
+  // Feedback
+  const fb = document.getElementById('quizFeedback');
+  fb.classList.remove('hidden');
+  fb.className = 'quiz-feedback ' + (isCorrect ? 'correct' : 'wrong');
+  
+  fb.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span class="fb-icon">${isCorrect ? '✅' : '❌'}</span>
+      <span class="fb-title">${isCorrect ? 'Richtig!' : 'Leider falsch'}</span>
+    </div>
+    <div class="fb-detail">${q.explanation}</div>
+    <div class="fb-hint">💡 <strong>Hinweis:</strong> ${q.hint}</div>
+  `;
+  
+  // Track wrong answers
+  if (!isCorrect) {
+    const cs = state.categories[state.currentCategoryIdx];
+    if (!cs.wrongIds) cs.wrongIds = new Set();
+    cs.wrongIds.add(item.id);
+    
+    // Also track for final quiz
+    if (!state.finalWrongIds.includes(item.id)) {
+      state.finalWrongIds.push(item.id);
+    }
+  } else {
+    // If correct and was previously wrong, remove from wrong lists
+    const cs = state.categories[state.currentCategoryIdx];
+    if (cs.wrongIds) cs.wrongIds.delete(item.id);
+    state.finalWrongIds = state.finalWrongIds.filter(id => id !== item.id);
+  }
+  
+  saveProgress();
+  document.getElementById('btnNextQuestion').classList.remove('hidden');
+}
+
+// ─── NEXT QUESTION ───
+document.getElementById('btnNextQuestion').addEventListener('click', () => {
+  state.quizIndex++;
+  if (state.quizPhase === 'final' && state.quizIndex >= state.quizQuestions.length) {
+    showFinalResults();
+  } else {
+    renderQuizQuestion();
+  }
+});
+
+// ─── QUIZ RESULTS ───
+function showQuizResults() {
+  const cat = appData.categories[state.currentCategoryIdx];
+  const cs = state.categories[state.currentCategoryIdx];
+  
+  const totalQ = state.quizQuestions.length;
+  const wrongCount = cs.wrongIds ? cs.wrongIds.size : 0;
+  const correctCount = totalQ - wrongCount;
+  const allCorrect = wrongCount === 0;
+  
+  if (allCorrect && state.quizPhase === 'quiz') {
+    cs.completed = true;
+    saveProgress();
+  }
+  
+  const content = document.getElementById('resultsContent');
+  
+  let emoji = '🎉';
+  let msg = 'Super gemacht!';
+  if (correctCount === 0) { emoji = '😅'; msg = 'Üben hilft!'; }
+  else if (wrongCount > 0) { emoji = '👍'; msg = 'Gut, aber es gibt noch Luft nach oben!'; }
+  if (allCorrect && state.quizPhase === 'retry') { emoji = '🎯'; msg = 'Alle Fehler ausgebessert!'; }
+  
+  content.innerHTML = `
+    <div class="emoji">${emoji}</div>
+    <div class="score">${correctCount}/${totalQ}</div>
+    <div class="score-label">${msg}</div>
+    <div class="mt-8" style="color:var(--gray-500);font-size:.9rem">
+      ${allCorrect ? 'Keine offenen Fragen mehr!' : `${wrongCount} Frage(n) noch nicht richtig`}
+    </div>
+    <div class="result-actions">
+      ${!allCorrect ? `<button class="btn btn-primary btn-block" id="btnRetryWrong">🔄 Falsche wiederholen (${wrongCount})</button>` : ''}
+      ${allCorrect && state.quizPhase === 'retry' ? `<button class="btn btn-accent btn-block" id="btnBackToCat">✅ Zurück zur Übersicht</button>` : ''}
+      ${allCorrect && state.quizPhase === 'quiz' ? `<button class="btn btn-accent btn-block" id="btnBackToCat">✅ Zurück zur Übersicht</button>` : ''}
+      ${!allCorrect && state.quizPhase === 'quiz' ? `<button class="btn btn-outline btn-block" id="btnRetryAll">🔄 Alle Fragen wiederholen</button>` : ''}
+    </div>
+  `;
+  
+  showScreen('results');
+  
+  // Defer event binding
+  setTimeout(() => {
+    const retryBtn = document.getElementById('btnRetryWrong');
+    if (retryBtn) retryBtn.addEventListener('click', () => startQuiz(state.currentCategoryIdx, true));
+    
+    const retryAllBtn = document.getElementById('btnRetryAll');
+    if (retryAllBtn) retryAllBtn.addEventListener('click', () => startQuiz(state.currentCategoryIdx, false));
+    
+    const backBtn = document.getElementById('btnBackToCat');
+    if (backBtn) backBtn.addEventListener('click', () => { showScreen('overview'); renderOverview(); });
+  }, 50);
+}
+
+// ─── FINAL QUIZ ───
+function startFinalQuiz() {
+  const wrongIds = state.finalWrongIds || [];
+  if (wrongIds.length === 0) {
+    alert('🎉 Alle Fragen wurden bereits richtig beantwortet! Keine finale Prüfung nötig.');
+    return;
+  }
+  
+  const questions = [];
+  wrongIds.forEach(id => {
+    const q = findQuestionById(id);
+    if (q) questions.push({ q, id });
+  });
+  
+  if (questions.length === 0) return;
+  
+  const shuffled = shuffle(questions);
+  
+  state.quizQuestions = shuffled;
+  state.quizIndex = 0;
+  state.quizAnswered = false;
+  state.quizPhase = 'final';
+  
+  document.getElementById('quizCategoryLabel').textContent = '🏆 Finale Prüfung – alle offenen Fragen';
+  showScreen('quiz');
+  renderQuizQuestion();
+}
+
+function showFinalResults() {
+  const totalInQuiz = state.quizQuestions.length;
+  // Count how many questions from this quiz session are still in finalWrongIds
+  let stillInQuiz = 0;
+  const wrongSet = new Set(state.finalWrongIds || []);
+  for (const q of state.quizQuestions) {
+    if (wrongSet.has(q.id)) stillInQuiz++;
+  }
+  const correctInQuiz = totalInQuiz - stillInQuiz;
+  
+  const content = document.getElementById('resultsContent');
+  
+  if (stillInQuiz === 0) {
+    content.innerHTML = `
+      <div class="emoji">🏆</div>
+      <div class="score">🎉 ALLES RICHTIG!</div>
+      <div class="score-label">Du hast alle Fragen des Schulunterrichtsgesetzes gemeistert!</div>
+      <div class="result-actions">
+        <button class="btn btn-primary btn-block" id="btnHome">Zur Startseite</button>
+      </div>
+    `;
+  } else {
+    content.innerHTML = `
+      <div class="emoji">💪</div>
+      <div class="score">${Math.max(0, correctInQuiz)}/${totalInQuiz}</div>
+      <div class="score-label">Noch ${stillInQuiz} Frage(n) offen – dranbleiben!</div>
+      <div class="result-actions">
+        <button class="btn btn-primary btn-block" id="btnFinalRetry">🔄 Wiederholen (${stillInQuiz})</button>
+        <button class="btn btn-outline btn-block" id="btnHome">Zur Startseite</button>
+      </div>
+    `;
+  }
+  
+  showScreen('results');
+  
+  setTimeout(() => {
+    const retryBtn = document.getElementById('btnFinalRetry');
+    if (retryBtn) retryBtn.addEventListener('click', startFinalQuiz);
+    
+    const homeBtn = document.getElementById('btnHome');
+    if (homeBtn) homeBtn.addEventListener('click', () => { showScreen('overview'); renderOverview(); });
+  }, 50);
+}
+
+// ─── HELPERS ───
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ─── EVENT BINDINGS ───
+document.getElementById('btnLearnBack').addEventListener('click', () => {
+  showScreen('overview');
+  renderOverview();
+});
+
+document.getElementById('btnQuizBack').addEventListener('click', () => {
+  showScreen('overview');
+  renderOverview();
+});
+
+document.getElementById('btnStartQuiz').addEventListener('click', () => {
+  startQuiz(state.currentCategoryIdx, false);
+});
+
+document.getElementById('btnFinalQuiz').addEventListener('click', startFinalQuiz);
+
+// ─── INIT ───
+loadProgress();
+
+fetch('schug-data.json')
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(data => {
+    appData = data;
+    
+    // Initialize category state
+    data.categories.forEach((_, i) => {
+      if (!state.categories[i]) {
+        state.categories[i] = { learned: false, wrongIds: new Set(), completed: false };
+      }
+    });
+    
+    // Restore wrong IDs sets from serialized
+    state.categories.forEach((c, i) => {
+      if (c && c.wrongIds && !(c.wrongIds instanceof Set)) {
+        state.categories[i].wrongIds = new Set(c.wrongIds || []);
+      }
+    });
+    
+    showScreen('overview');
+    renderOverview();
+  })
+  .catch(err => {
+    document.getElementById('screenLoading').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <h3>Fehler beim Laden</h3>
+        <p>${err.message}</p>
+        <p style="font-size:.85rem;margin-top:8px">Stelle sicher, dass die Datei <strong>schug-data.json</strong> im selben Ordner liegt.</p>
+      </div>
+    `;
+  });
+
+console.log('📚 SchUG Quiz geladen – Viel Erfolg beim Lernen!');
+</script>
+</body>
+</html>
