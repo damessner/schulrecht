@@ -251,65 +251,24 @@ for (const p of allParagraphs) {
 // Generates multiple-choice questions with hints and explanations
 // Targets 30-45 questions per category
 
-const FAKE_ITEMS_POOL = [
-  'Ein polizeiliches Führungszeugnis ist vorzulegen',
-  'Die Zustimmung der Schulbehörde ist erforderlich',
-  'Ein ärztliches Attest über die körperliche Eignung',
-  'Der Nachweis der Deutschkenntnisse auf Maturaniveau',
-  'Die Vorlage einer beglaubigten Geburtsurkunde',
-  'Ein Empfehlungsschreiben des vorigen Lehrers',
-  'Der Abschluss einer Haftpflichtversicherung ist nachzuweisen',
-  'Die Mitgliedschaft im Elternverein ist verpflichtend',
-  'Die Zahlung einer Einschreibegebühr ist erforderlich',
-  'Ein psychologisches Gutachten muss vorgelegt werden',
-  'Die Zustimmung der Schulkonferenz ist einzuholen',
-  'Ein einjähriges Praktikum ist nachzuweisen',
-  'Die Vorlage eines Lebenslaufs ist erforderlich',
-  'Ein Bewerbungsgespräch ist zu absolvieren',
-  'Die Schule darf die Aufnahmegebühr frei festlegen',
-  'Der Schüler muss eine Aufnahmeprüfung in drei Fächern ablegen',
-  'Die Schule kann Schüler nach eigenem Ermessen ablehnen',
-  'Der Klassenvorstand entscheidet über die Aufnahme',
-  'Die Eltern müssen der Aufnahme schriftlich zustimmen',
-  'Der Religionsunterricht ist für alle Schüler verpflichtend',
-];
-
-const WRONG_SCOPE_OPTIONS = [
-  'Die Organisation von Schulveranstaltungen',
-  'Die Regelung von Prüfungsmodalitäten',
-  'Bestimmungen zur Klassenbildung und Gruppeneinteilung',
-  'Die Regelung der Ferien- und Urlaubsordnung',
-  'Vorschriften zur Schulgebäudeverwaltung',
-  'Die Festlegung von Lehrplänen und Stundentafeln',
-  'Regelungen zur Lehrerbesoldung',
-  'Bestimmungen über den Schultransport',
-  'Die Organisation der Schulaufsicht',
-  'Regelungen zur Schulbuchaktion',
-  'Vorschriften über Schulpartnerschaft und Elternvereine',
-  'Bestimmungen zur Schulverwaltung und Direktion',
-  'Die Festlegung von Unterrichtszeiten',
-  'Regelungen zur Nachmittagsbetreuung',
-  'Die Organisation von Sprachförderkursen',
-  'Bestimmungen zur Schülerhortbetreuung',
-];
-
-const ROLES = [
-  { keyword: 'Schulleiter', label: 'Der Schulleiter / die Schulleiterin' },
-  { keyword: 'Schulleitung', label: 'Die Schulleitung' },
-  { keyword: 'Bundesminister', label: 'Der zuständige Bundesminister' },
-  { keyword: 'Klassenvorstand', label: 'Der Klassenvorstand' },
-  { keyword: 'Schulbehörde', label: 'Die zuständige Schulbehörde' },
-  { keyword: 'Schulkonferenz', label: 'Die Schulkonferenz' },
-  { keyword: 'Klassenkonferenz', label: 'Die Klassenkonferenz' },
-  { keyword: 'Lehrer', label: 'Der/die unterrichtende Lehrer/in' },
-  { keyword: 'Schulforum', label: 'Das Schulforum' },
-  { keyword: 'Schulgemeinschaftsausschuss', label: 'Der Schulgemeinschaftsausschuss (SGA)' },
-  { keyword: 'Schulerhalter', label: 'Der Schulerhalter' },
-  { keyword: 'Bildungsdirektion', label: 'Die Bildungsdirektion' },
-  { keyword: 'Erziehungsberechtigten', label: 'Die Erziehungsberechtigten' },
-  { keyword: 'Schüler', label: 'Der Schüler / die Schülerin' },
-  { keyword: 'Prüfer', label: 'Der Prüfer / die Prüferin' },
-];
+// Role labels for practical responsibility questions
+const ROLE_LABELS = {
+  'Schulleiter': 'der Schulleitung',
+  'Schulleitung': 'der Schulleitung',
+  'Bundesminister': 'des zuständigen Bundesministers',
+  'Schulbehörde': 'der Schulbehörde (Bildungsdirektion)',
+  'Schulkonferenz': 'der Schulkonferenz',
+  'Klassenkonferenz': 'der Klassenkonferenz',
+  'Klassenvorstand': 'des Klassenvorstands',
+  'Lehrer': 'der unterrichtenden Lehrkraft',
+  'Schulforum': 'des Schulforums',
+  'Schulgemeinschaftsausschuss': 'des Schulgemeinschaftsausschusses (SGA)',
+  'Schulerhalter': 'des Schulerhalters',
+  'Erziehungsberechtigten': 'der Erziehungsberechtigten (Eltern)',
+  'Bildungsdirektion': 'der Bildungsdirektion',
+  'Schüler': 'des Schülers / der Schülerin',
+  'Prüfer': 'des Prüfers / der Prüferin',
+};
 
 function shuffle(a) {
   const arr = [...a];
@@ -332,372 +291,196 @@ function makeQuestionWithOpts(question, options, correctAnswer, hint, explanatio
   return { type, question, options: shuffled, correct, hint, explanation };
 }
 
-function extractSentence(text, keyword) {
-  const sentences = text.split(/(?<=\.)\s+/);
-  for (const sent of sentences) {
-    if (sent.includes(keyword)) {
-      return sent.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
-    }
-  }
-  return '';
-}
+// ─── BUILD OUTPUT ───
 
-function extractKeyPoints(t) {
-  const points = [];
-  // Match numbered items: "1. text" or "a) text" followed by number or letter
-  const items = t.match(/(?:\d+\.\s*|[a-z]\)\s*)([A-Z][^0-9a-z)]*?)(?=(?:\d+\.|[a-z]\)|$))/g);
-  if (items) {
-    for (const item of items) {
-      const clean = item.replace(/^\d+\.\s*/, '').replace(/^[a-z]\)\s*/, '').trim();
-      if (clean.length > 15 && clean.length < 200 && !clean.match(/^(Abs|Ziffer|Litera|Paragraph)/)) {
-        points.push(clean);
-      }
-    }
-  }
-  return points;
-}
+// ─── PRACTICAL SCENARIO GENERATOR ───
+// Nur praxisnahe Fallbeispiele für Lehrer – keine abstrakten Paragraphenfragen.
 
 function generateQuestions(para) {
   const questions = [];
   const text = para.text;
   const num = para.number;
   const title = para.title;
-
   if (!text || text.length < 30) return questions;
 
-  // Pre-extract data
-  const points = extractKeyPoints(text);
-  const sentences = text.split(/(?<=\.)\s+/).filter(s => s.trim().length > 20);
-  
-  // ─── TYPE 1: Content / Scope ───
-  // "Was regelt §X?" - always generate
-  if (title) {
-    const wrongScope = shuffle(WRONG_SCOPE_OPTIONS.filter(o => o !== title)).slice(0, 3);
-    questions.push(makeQuestion(
-      `Was ist der Hauptgegenstand von § ${num}?`,
-      title,
-      wrongScope,
-      `Der Titel des Paragraphen gibt einen direkten Hinweis auf den Regelungsgegenstand.`,
-      `§ ${num} trägt den Titel "${title}" und regelt diesen Bereich.`
-    ));
-  }
-
-  // ─── TYPE 2: Which paragraph number for this topic? ───
-  if (title) {
-    const correctOpt = `§ ${num}`;
-    const wrongSet = new Set();
-    const nums = [parseInt(num) + 1, Math.max(1, parseInt(num) - 1), parseInt(num) + 3, parseInt(num) - 2, parseInt(num) + 5];
-    for (const n of nums) {
-      const opt = `§ ${n}`;
-      if (opt !== correctOpt) wrongSet.add(opt);
-    }
-    const wrongArr = [...wrongSet].slice(0, 3);
-    if (wrongArr.length === 3) {
-      questions.push(makeQuestion(
-        `Welcher Paragraph regelt "${title}"?`,
-        correctOpt, wrongArr,
-        `Überlege, welcher Paragraphennummer das Thema "${title}" zugeordnet ist.`,
-        `Das Thema "${title}" ist in § ${num} des Schulunterrichtsgesetzes geregelt.`
-      ));
-    }
-  }
-
-  // ─── TYPE 3: Role/Responsibility (up to 1 per paragraph) ───
-  for (const role of ROLES) {
-    if (questions.filter(q => q.type === 'responsibility').length >= 1) break;
-    
-    if (text.includes(role.keyword) && (text.includes('hat') || text.includes('obliegt') || text.includes('zuständig') || text.includes('zu'))) {
-      const dutySentence = extractSentence(text, role.keyword);
-      if (dutySentence && dutySentence.length < 250) {
-        const otherRoles = shuffle(ROLES.filter(r => r.keyword !== role.keyword)).slice(0, 3).map(r => r.label);
-        
-        questions.push(makeQuestion(
-          `Wer ist gemäß § ${num} wofür zuständig? ${dutySentence.substring(0, 80)}...`,
-          role.label, otherRoles,
-          `Im Gesetzestext ist eine bestimmte Person oder Institution als zuständig genannt.`,
-          `Gemäß § ${num} ist ${role.label} zuständig. Textauszug: "${dutySentence.substring(0, 200)}."`
-        ));
-      }
-    }
-  }
-
-  // ─── TYPE 4: Real vs Fake (condition/requirement) ───
-  if (points.length >= 2) {
-    const correct = points[Math.floor(Math.random() * points.length)];
-    const wrong = shuffle(FAKE_ITEMS_POOL.filter(f => !text.includes(f))).slice(0, 3);
-    questions.push(makeQuestion(
-      `Welche der folgenden Regelungen ist in § ${num} tatsächlich enthalten?`,
-      correct, wrong,
-      `Nur eine der Aussagen stammt tatsächlich aus diesem Paragraphen.`,
-      `§ ${num} enthält: "${correct.substring(0, 200)}". Die anderen Optionen sind nicht in diesem Paragraphen zu finden.`
-    ));
-  }
-
-  // ─── TYPE 5: What is NOT in this paragraph ───
-  if (points.length >= 3) {
-    const real = shuffle(points).slice(0, 3);
-    const fake = shuffle(FAKE_ITEMS_POOL.filter(f => !text.includes(f)))[0] || 'Eine Regelung die in diesem Paragraphen nicht vorkommt';
-    const allOptions = [...real, fake];
-    questions.push(makeQuestionWithOpts(
-      `Welche Aussage ist KEIN Bestandteil von § ${num}?`,
-      allOptions.map(o => o.length > 100 ? o.substring(0, 100) + '...' : o),
-      fake.substring(0, 100),
-      `Drei der Aussagen kommen im Paragraphen vor, eine ist erfunden.`,
-      `"${fake.substring(0, 120)}" ist nicht in § ${num} enthalten. Die anderen Aussagen finden sich im Gesetzestext.`
-    ));
-  }
-
-  // ─── TYPE 6: Obligation / Duty ───  
-  const dutyPatterns = [
-    /(hat|haben)\s+([^.]{20,150})/g,
-    /(ist|sind)\s+([^.]{15,150}(?:verpflichtet|zulässig|vorgesehen|zu erlassen))/gi,
-    /(obliegt)\s+([^.]{20,150})/g,
-  ];
-  
-  for (const pat of dutyPatterns) {
-    if (questions.filter(q => q.type === 'duty').length >= 1) break;
-    const matches = [...text.matchAll(pat)];
-    if (matches.length > 0) {
-      const m = matches[Math.floor(Math.random() * matches.length)];
-      const duty = m[0].replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
-      if (duty.length > 20 && duty.length < 200) {
-        const fakeDuties = [
-          'Jeder Lehrer darf den Unterricht nach eigenem Ermessen gestalten',
-          'Schüler können den Unterricht jederzeit eigenmächtig verlassen',
-          'Die Schule darf Schulveranstaltungen ohne Zustimmung absagen',
-          'Der Klassenvorstand entscheidet allein über die Versetzung',
-          'Noten können nach freiem Ermessen des Lehrers vergeben werden',
-          'Die Schulbehörde muss jeder Änderung des Stundenplans zustimmen',
-        ].filter(f => f !== duty.substring(0, 120));
-        questions.push(makeQuestion(
-          `Welche Verpflichtung oder Regelung ergibt sich aus § ${num}?`,
-          duty.substring(0, 120), shuffle(fakeDuties).slice(0, 3),
-          `Formulierungen wie "hat zu", "ist verpflichtet" oder "obliegt" weisen auf rechtliche Pflichten hin.`,
-          `§ ${num} enthält folgende Regelung: "${duty.substring(0, 250)}."`
-        ));
-      }
-    }
-  }
-
-  // ─── TYPE 7: True/False – multiple variants ───
-  const validSentences = sentences.filter(s => s.length > 30 && s.length < 200);
-  
-  // TF1: Direct quote from the text → RICHTIG
-  if (validSentences.length >= 1) {
-    const realSnippet = shuffle(validSentences)[0].replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().substring(0, 120) + '...';
-    questions.push(makeQuestion(
-      `Richtig oder falsch? "${realSnippet}"`,
-      '✅ Richtig',
-      ['❌ Falsch'],
-      `Überprüfe, ob diese Aussage wörtlich oder sinngemäß im Gesetzestext vorkommt.`,
-      `✅ Diese Aussage ist RICHTIG – sie stammt (sinngemäß) aus § ${num}.`
-    ));
-  }
-  
-  // TF2: Take a real sentence and systematically modify a key piece → FALSCH
-  const roleReplacements = [
-    { from: 'Schulleiter', to: 'Klassenvorstand' },
-    { from: 'Schulleiterin', to: 'Klassenlehrerin' },
-    { from: 'Bundesminister', to: 'Schulbehörde' },
-    { from: 'Schulbehörde', to: 'Schulleiter' },
-    { from: 'Schulkonferenz', to: 'Klassenkonferenz' },
-    { from: 'Klassenvorstand', to: 'Schulleiter' },
-    { from: 'Schüler', to: 'Lehrer' },
-    { from: 'Lehrer', to: 'Schüler' },
-    { from: 'Erziehungsberechtigten', to: 'Schülern' },
-    { from: 'ordentlicher', to: 'außerordentlicher' },
-    { from: 'ordentlichen', to: 'außerordentlichen' },
-    { from: 'außerordentlicher', to: 'ordentlicher' },
-    { from: 'außerordentlichen', to: 'ordentlichen' },
-    { from: 'zuständige', to: 'örtliche' },
-    { from: 'zuständigen', to: 'örtlichen' },
-  ];
-  
-  for (const rr of shuffle(roleReplacements)) {
-    if (questions.filter(q => q.type === 'tf_modified').length >= 1) break;
-    const match = text.match(new RegExp(rr.from, 'i'));
-    if (match) {
-      const idx = Math.max(0, match.index - 20);
-      const snippet = text.substring(idx, idx + 150).replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
-      if (snippet.length > 30) {
-        const modified = snippet.replace(new RegExp(rr.from, 'i'), rr.to);
-        const truncated = modified.length > 130 ? modified.substring(0, 130) + '...' : modified;
-        questions.push(makeQuestion(
-          `Richtig oder falsch? "${truncated}"`,
-          '❌ Falsch',
-          ['✅ Richtig'],
-          `Achte besonders auf die handelnden Personen/Rollen – wurde etwas vertauscht?`,
-          `❌ Diese Aussage ist FALSCH. Im Gesetzestext steht hier "${rr.from}", nicht "${rr.to}".`
-        ));
-      }
-    }
-  }
-  
-  // TF3: Fabricated plausible-sounding rule → FALSCH
-  const fakeRules = [
-    'Die Schule kann bei Verstößen gegen die Schulordnung eine Geldstrafe verhängen',
-    'Schüler haben das Recht, den Unterricht ab der 9. Schulstufe eigenständig abzuwählen',
-    'Der Schulleiter wird von den Eltern der Schüler gewählt',
-    'Noten können von Schülern durch eine zusätzliche Prüfung verbessert werden',
-    'Jede Schule muss mindestens zwei Schulärzte beschäftigen',
-    'Schüler dürfen maximal drei Fehltage pro Semester haben',
-    'Die Schulaufsicht wird von den Eltern organisiert',
-    'Lehrer müssen einmal jährlich eine Prüfung ablegen',
-    'Schulen dürfen die Aufnahmegebühren frei festlegen',
-    'Die Klassengröße darf maximal 35 Schüler betragen',
-    'Der Klassenvorstand wird von den Schülern gewählt',
-    'Eltern haben das Recht, den Unterricht ihrer Kinder jederzeit zu besuchen',
-    'Schüler müssen eine uniforme Schulkleidung tragen',
+  // ─── FALL 1: Verbreitete Lehrer-Irrtümer (Richtig/Falsch) ───
+  const praxisIrrtuemer = [
+    'Eine Lehrerin darf eigenmächtig den Stundenplan ihrer Klasse ändern',
+    'Schüler können bei schlechten Noten einfach die Schule wechseln',
+    'Eltern haben immer das Recht, im Unterricht ihrer Kinder anwesend zu sein',
+    'Eine Schule darf bei Regelverstößen Geldstrafen verhängen',
+    'Der Klassenvorstand entscheidet allein über die Versetzung von Schülern',
+    'Lehrer müssen alle Hausübungen am nächsten Tag benoten',
+    'Schüler dürfen selbst entscheiden, ob sie am Förderunterricht teilnehmen',
     'Die Schulkonferenz tagt mindestens einmal pro Woche',
-    'Jeder Lehrer darf die Noten nach eigenem Ermessen festlegen ohne Bindung an den Lehrplan',
-    'Die Schule darf bei schlechten Leistungen eine Nachhilfegebühr verlangen',
-    'Schüler müssen jedes Jahr eine Wiederholungsprüfung in Mathematik ablegen',
-    'Der Schulerhalter ernennt die Lehrpersonen persönlich',
+    'Ein Schulleiter kann jederzeit jede Klasse ohne Angabe von Gründen auflösen',
+    'Lehrpersonen müssen während der Ferien in der Schule anwesend sein',
+    'Schüler haben ein Recht auf Note 1, wenn sie sich bemühen',
+    'Bei jeder Schularbeit muss mindestens die Hälfte der Klasse positiv sein',
+    'Der Schulleiter wird von den Eltern und Schülern gemeinsam gewählt',
+    'Noten dürfen nur nach Vorliegen aller Prüfungen bekannt gegeben werden',
+    'Eine Schule kann einen Schüler jederzeit vom Unterricht ausschließen',
+    'Schüler müssen bei jedem Fehlen eine ärztliche Bestätigung vorlegen',
+    'Die Klasse darf selbst bestimmen, wann eine Schularbeit stattfindet',
+    'Eltern können die Note ihres Kindes durch einen Antrag anfechten und ändern lassen',
+    'Der Schulleiter muss jeder Stundenplanänderung persönlich zustimmen',
+    'Ein Schüler darf maximal 3 Fehltage pro Semester haben',
+    'Lehrer müssen den gesamten Lehrstoff bis zum Ende des Semesters durchnehmen',
+    'Bei einer Klassenfahrt müssen alle Schüler teilnehmen – auch gegen ihren Willen',
+    'Der Religionsunterricht ist für alle Schüler verpflichtend',
+    'Die Schule darf Handys im Unterricht generell verbieten',
+    'Nach der 9. Schulstufe besteht keine Schulpflicht mehr',
+    'Die Schule darf den Schulbesuch verweigern, wenn das Kind keinen Wohnsitz in der Gemeinde hat',
+    'Lehrpersonen dürfen eigenständig entscheiden, welche Unterrichtsmittel sie verwenden',
+    'Ein Schüler kann ohne Zustimmung seiner Eltern die Schule wechseln',
+    'Die Schulbehörde muss jede einzelne Note genehmigen',
+    'Schüler haben das Recht, den Unterricht zu filmen',
   ];
-  
-  for (const fake of shuffle(fakeRules)) {
-    if (questions.filter(q => q.type === 'tf_fake').length >= 1) break;
-    if (!text.toLowerCase().includes(fake.substring(0, 20).toLowerCase())) {
+
+  for (const irrtum of shuffle(praxisIrrtuemer)) {
+    if (questions.length >= 2) break;
+    const textLower = text.toLowerCase();
+    const irrWords = irrtum.toLowerCase().split(' ').slice(0, 4);
+    if (irrWords.some(w => textLower.includes(w))) {
+      const isGenerallyFalse = true; // all listed are false/generalizations
       questions.push(makeQuestion(
-        `Richtig oder falsch? "${fake}"`,
-        '❌ Falsch',
-        ['✅ Richtig'],
-        `Diese Regel klingt vielleicht plausibel, aber kommt sie tatsächlich in § ${num} vor?`,
-        `❌ Diese Aussage ist FALSCH. Sie stammt nicht aus § ${num} und ist kein Bestandteil des Schulunterrichtsgesetzes.`
+        `„${irrtum}“ – stimmt das aus schulrechtlicher Sicht?`,
+        '❌ Nein, das ist ein häufiger Irrtum',
+        ['✅ Ja, das ist korrekt'],
+        `Viele „Lehrerzimmer-Weisheiten“ sind rechtlich falsch! Das SchUG regelt das anders.`,
+        `❌ Das stimmt nicht! Das SchUG enthält dazu spezifischere Regelungen. Solche pauschalen Aussagen sind meist unzulässig.`
       ));
     }
   }
-  
-  // TF4: Negate a real rule → FALSCH
-  if (validSentences.length >= 2) {
-    const baseSent = validSentences.filter(s => 
-      !s.includes('nicht') && !s.includes('kein') && s.length > 25 && s.length < 120
-    );
-    if (baseSent.length >= 1) {
-      const sent = shuffle(baseSent)[0].replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().substring(0, 100);
-      const negated = `Nicht ${sent.charAt(0).toLowerCase() + sent.slice(1)}`;
-      if (negated.length < 130) {
-        questions.push(makeQuestion(
-          `Richtig oder falsch? "${negated}"`,
-          '❌ Falsch',
-          ['✅ Richtig'],
-          `Wurde hier vielleicht eine Regelung ins Gegenteil verkehrt?`,
-          `❌ Diese Aussage ist FALSCH. Die korrekte Regelung aus § ${num} lautet (sinngemäß): "${sent}..."`
-        ));
-      }
+
+  // ─── FALL 2: Wer ist zuständig? (praktische Situationen) ───
+  // Formuliert als echte Frage aus dem Schulalltag
+  const zustaendigkeiten = [
+    { role: 'Schulleiter', q: 'Der Stundenplan muss geändert werden. Wer ordnet das an?', a: 'Der Schulleiter / die Schulleiterin', f: 'Der Klassenvorstand', f2: 'Die Schulbehörde', f3: 'Die Lehrperson selbst' },
+    { role: 'Schulleiter', q: 'Eine Klasse muss neu eingeteilt werden. Wer entscheidet über die Klassenzuteilung?', a: 'Der Schulleiter / die Schulleiterin', f: 'Die Klassenkonferenz', f2: 'Die Bildungsdirektion', f3: 'Der Schulerhalter' },
+    { role: 'Schulleiter', q: 'Ein Schüler möchte die Schule wechseln. Wer entscheidet über die Aufnahme?', a: 'Der Schulleiter / die Schulleiterin', f: 'Der Klassenvorstand', f2: 'Die Bildungsdirektion', f3: 'Der bisherige Klassenvorstand' },
+    { role: 'Bundesminister', q: 'Die Richtlinien für die Leistungsbeurteilung sollen aktualisiert werden. Wer erlässt die Verordnung?', a: 'Der zuständige Bundesminister', f: 'Die Bildungsdirektion', f2: 'Der Schulleiter', f3: 'Die Schulkonferenz' },
+    { role: 'Schulkonferenz', q: 'Ein Schüler mit sonderpädagogischem Förderbedarf soll nach einem abweichenden Lehrplan unterrichtet werden. Wer entscheidet?', a: 'Die Schulkonferenz', f: 'Der Schulleiter allein', f2: 'Die Eltern', f3: 'Der Klassenvorstand' },
+    { role: 'Klassenkonferenz', q: 'Ein Schüler hat die Prüfung nicht bestanden – die Entscheidung über die Gesamtbeurteilung trifft:', a: 'Die Klassenkonferenz (unter Vorsitz des Schulleiters)', f: 'Der Klassenvorstand allein', f2: 'Die unterrichtende Lehrperson', f3: 'Der Schulleiter allein' },
+    { role: 'Schulbehörde', q: 'Eine Privatschule möchte die Aufnahmebedingungen ändern. Wer genehmigt das?', a: 'Die zuständige Schulbehörde (Bildungsdirektion)', f: 'Der Schulleiter', f2: 'Der Schulerhalter', f3: 'Das Schulforum' },
+    { role: 'Schulforum', q: 'Welche Lehrmittel angeschafft werden, entscheidet an öffentlichen Schulen:', a: 'Das Schulforum (bzw. die Schulkonferenz)', f: 'Der Schulleiter allein', f2: 'Die Bildungsdirektion', f3: 'Jede Lehrperson für sich' },
+    { role: 'Klassenvorstand', q: 'Die Eltern möchten ein Gespräch über die Leistungen ihres Kindes. An wen wenden sie sich zuerst?', a: 'An den Klassenvorstand / die Klassenvorständin', f: 'An den Schulleiter', f2: 'An die Schulbehörde', f3: 'An den Schulerhalter' },
+    { role: 'Erziehungsberechtigten', q: 'Ein Kind soll als außerordentlicher Schüler aufgenommen werden. Wer muss dafür sorgen, dass das Kind die Unterrichtssprache beherrscht?', a: 'Die Erziehungsberechtigten (Eltern)', f: 'Die Schule', f2: 'Der Klassenvorstand', f3: 'Die Bildungsdirektion' },
+  ];
+
+  for (const z of shuffle(zustaendigkeiten)) {
+    if (questions.filter(q => q.type === 'zustaendigkeit').length >= 2) break;
+    if (text.includes(z.role)) {
+      questions.push(makeQuestion(z.q, z.a, [z.f, z.f2, z.f3],
+        `Überlege, wer im Schulsystem für diese Aufgabe rechtlich zuständig ist.`,
+        `Zuständig ist ${z.a}. (Quelle: § ${num} SchUG)`
+      ));
     }
   }
 
-  // ─── TYPE 8: Specific detail ───
-  const detailMatches = text.match(/(\d+\s*(?:Tage|Monate|Wochen|Jahre|Schulstufe|Klasse|Stufe|Semester))/g);
+  // ─── FALL 3: Fristen und Zahlen aus dem Schulalltag ───
+  const detailMatches = text.match(/(\d+\s*(?:Tage|Monate|Wochen|Jahre|Schulstufe|Klasse|Semester|Stunden|Minuten))/g);
   if (detailMatches && detailMatches.length > 0) {
     const detail = detailMatches[Math.floor(Math.random() * detailMatches.length)];
-    const wrongDetails = ['3 Monate', '6 Wochen', '2 Jahre', '4 Semester', '8 Wochen', '12 Tage']
-      .filter(d => d !== detail).slice(0, 3);
-    if (wrongDetails.length === 3) {
+    const wrongPool = ['3 Monate', '6 Wochen', '2 Jahre', '4 Semester', '8 Wochen', '12 Tage', '5 Werktage', '1 Monat', '2 Wochen', '10 Tage'];
+    const wrong = shuffle(wrongPool.filter(d => d !== detail)).slice(0, 3);
+    if (wrong.length === 3) {
       questions.push(makeQuestion(
-        `Welche Zeitangabe oder Mengenangabe kommt in § ${num} vor?`,
-        detail, wrongDetails,
-        `Achte auf konkrete Zahlen, Fristen oder Zeiträume im Gesetzestext.`,
-        `In § ${num} wird "${detail}" als Frist oder Mengenangabe genannt.`
+        `Sie bereiten einen Antrag/eine Frist vor. Welche Zeitangabe nennt das Gesetz in diesem Zusammenhang?`,
+        detail, wrong,
+        `Fristen sind im Schulrecht oft entscheidend! Achte auf konkrete Zahlen.`,
+        `Das Gesetz nennt hier „${detail}“. (Quelle: § ${num} SchUG)`
       ));
     }
   }
 
-  // Extra pass for small paragraphs: generate additional simple questions
-  if (questions.length < 8 && text.length > 50) {
-    const keySents = text.split(/(?<=\.)\s+/).filter(s => s.length > 30 && s.length < 180);
-    for (const sent of shuffle(keySents).slice(0, 3)) {
-      const cleanSent = sent.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
-      const words = cleanSent.split(' ');
-      if (words.length > 5) {
-        const hideIdx = Math.floor(words.length / 2);
-        const hidden = words[hideIdx];
-        const masked = words.map((w, i) => i === hideIdx ? '______' : w).join(' ');
-        const fakeFill = shuffle([
-          'Schulleiter', 'Bundesminister', 'Schulbehörde', 'Lehrer', 'Klassenvorstand',
-          'Schüler', 'Erziehungsberechtigte', 'Schulkonferenz', 'Schulforum'
-        ]).filter(w => w !== hidden).slice(0, 3);
-        if (fakeFill.length === 3) {
-          questions.push(makeQuestion(
-            `Vervollständige: ${masked.substring(0, 120)}`,
-            hidden, fakeFill,
-            'Ergänze das fehlende Wort sinnvoll aus dem Kontext.',
-            `Das fehlende Wort ist "${hidden}". Der vollständige Satz: "${cleanSent.substring(0, 200)}."`
-          ));
-        }
+  // ─── FALL 4: Vertauschte Rollen im Schulalltag ───
+  // Nimmt einen Satz aus dem Gesetz und tauscht eine Schlüsselrolle – 
+  // aber nur wenn der Satz klar und vollständig ist.
+  const swapPairs = [
+    { from: 'Schulleiter', to: 'Klassenvorstand', label: 'Schulleiter' },
+    { from: 'Schulleiterin', to: 'Klassenlehrerin', label: 'Schulleiter' },
+    { from: 'Schulbehörde', to: 'Schulleiter', label: 'Schulbehörde' },
+    { from: 'Bundesminister', to: 'Schulbehörde', label: 'Bundesminister' },
+    { from: 'ordentlicher', to: 'außerordentlicher', label: 'ordentlicher Schüler' },
+    { from: 'Schulkonferenz', to: 'Klassenkonferenz', label: 'Schulkonferenz' },
+  ];
+
+  for (const sp of shuffle(swapPairs)) {
+    if (questions.filter(q => q.type === 'rollentausch').length >= 1) break;
+    // Find a sentence that contains the keyword and is a reasonable length
+    const sentences = text.split(/(?<=\.)\s+/).filter(s => 
+      s.toLowerCase().includes(sp.label) && s.length > 30 && s.length < 200
+    );
+    if (sentences.length > 0) {
+      const sentence = shuffle(sentences)[0]
+        .replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim()
+        .replace(/^[a-z]\)\s*/i, '').replace(/^\d+\.\s*/, '');
+      if (sentence.length > 25) {
+        const modified = sentence.replace(new RegExp(sp.from, 'i'), sp.to);
+        const shortMod = modified.length > 120 ? modified.substring(0, 120) + '…' : modified;
+        questions.push(makeQuestion(
+          `Im Lehrerzimmer heißt es: „${shortMod}“ – stimmt diese Aussage?`,
+          '❌ Nein, hier wurden die Rollen vertauscht',
+          ['✅ Ja, das ist korrekt'],
+          `Achtung: Hier wurden „${sp.from}“ und „${sp.to}“ verwechselt! Diese Rollen sind nicht austauschbar.`,
+          `❌ Falsch! Im Gesetz steht „${sp.from}“, nicht „${sp.to}“. Die Rollen sind klar getrennt. (Quelle: § ${num})`
+        ));
       }
     }
   }
-  
-  // Return up to 15 questions per paragraph
+
+  // ─── FALL 5: Konkrete Praxisfälle (Multiple Choice) ───
+  const praxisFaelle = [
+    { q: 'Ein Kind kommt aus einem Nicht-EU-Land nach Österreich und spricht kaum Deutsch. Wie wird es aufgenommen?', a: 'Als außerordentlicher Schüler mit Sprachförderung (§ 4)', f: 'Als ordentlicher Schüler ohne besondere Maßnahmen', f2: 'Es muss zuerst einen Deutschkurs außerhalb der Schule absolvieren', f3: 'Es wird zurückgestellt, bis es Deutsch kann', kw: ['außerordentlich', 'Sprachförderung', 'Deutsch', 'Unterrichtssprache'] },
+    { q: 'Eine Schülerin möchte während des Schuljahres die Schule wechseln. Was gilt?', a: 'Der Schulleiter kann den Wechsel unter bestimmten Voraussetzungen genehmigen', f: 'Ein Schulwechsel ist nur am Ende des Schuljahres möglich', f2: 'Die Schülerin darf jederzeit ohne Genehmigung wechseln', f3: 'Nur die Bildungsdirektion kann einen Schulwechsel genehmigen', kw: ['Übertritt', 'Schule wechseln', 'Schulwechsel', 'Aufnahme'] },
+    { q: 'Ein Schüler stört massiv den Unterricht. Welche Maßnahme ist rechtlich zulässig?', a: 'Der Schulleiter kann den Schüler vom Unterricht ausschließen (nach Anhörung der Klassenkonferenz, § 13)', f: 'Die Lehrkraft kann den Schüler sofort der Schule verweisen', f2: 'Die Klasse kann den Ausschluss per Mehrheitsbeschluss fordern', f3: 'Es dürfen nur pädagogische Maßnahmen gesetzt werden, ein Ausschluss ist nicht möglich', kw: ['ausgeschlossen', 'ausschließen', 'Ordnung', 'Verhalten', 'Schulveranstaltung'] },
+    { q: 'Bei einer Schularbeit wird ein Schüler beim Schummeln erwischt. Welche Note bekommt er?', a: 'Die Leistung wird nicht beurteilt (§ 18 Abs. 4)', f: 'Note 5 (Nicht genügend)', f2: 'Note 4 (Genügend) – aber mit Vermerk', f3: 'Der Schüler darf die Arbeit sofort wiederholen', kw: ['vorgetäuschte', 'beurteilen', 'Leistungsbeurteilung', 'Nicht genügend'] },
+    { q: 'Mehr als die Hälfte einer Klasse hat bei einer Schularbeit Note 5. Was passiert?', a: 'Die Arbeit wird mit neuer Aufgabenstellung einmal wiederholt', f: 'Die Noten bleiben, aber die Klasse bekommt Förderunterricht', f2: 'Der Lehrer muss die Arbeit milder beurteilen', f3: 'Die Arbeit wird annulliert und nicht gewertet', kw: ['Nicht genügend', 'Hälfte', 'wiederholen', 'neue Aufgabenstellung'] },
+    { q: 'Ein Kind mit Behinderung kann bestimmte Leistungen nicht erbringen. Wie wird es beurteilt?', a: 'Nach dem erreichbaren Stand des Unterrichtserfolgs unter Bedachtnahme auf die Behinderung (§ 18 Abs. 6)', f: 'Nach dem gleichen Maßstab wie alle anderen Schüler', f2: 'Es wird automatisch positiv beurteilt', f3: 'Es wird von der Leistungsbeurteilung ausgenommen', kw: ['Behinderung', 'körperliche', 'sonderpädagogisch', 'Beurteilung'] },
+    { q: 'Eine Lehrerin möchte mit der Klasse eine mehrtägige Schulveranstaltung (zB Projektwoche) durchführen. Welche Regeln gelten?', a: 'Die Schüler sind zur Teilnahme verpflichtet, außer bei Nächtigung außerhalb – dann braucht es Zustimmung der Eltern', f: 'Nur der Schulleiter entscheidet allein', f2: 'Die Bildungsdirektion muss jede Schulveranstaltung genehmigen', f3: 'Schulveranstaltungen sind immer freiwillig', kw: ['Schulveranstaltung', 'Nächtigung', 'Teilnahme', 'verpflichtet'] },
+    { q: 'Ein Schüler wiederholt bereits die zweite Klasse derselben Schulstufe. Darf er noch einmal wiederholen?', a: 'Ein neuerliches Wiederholen derselben Schulstufe ist grundsätzlich nicht zulässig', f: 'Ja, mit Zustimmung der Eltern darf er beliebig oft wiederholen', f2: 'Ja, wenn die Schulkonferenz zustimmt', f3: 'Einmaliges Wiederholen ist immer möglich', kw: ['Wiederholen', 'Schulstufe', 'wiederholt', 'zweiten Mal'] },
+    { q: 'Die Eltern sind mit der Note im Zeugnis nicht einverstanden. Welches Recht haben sie?', a: 'Sie können beim Schulleiter schriftlich Einspruch erheben (Berufungsrecht)', f: 'Sie haben kein Recht, Noten anzufechten', f2: 'Sie können direkt zur Bildungsdirektion gehen', f3: 'Sie können die Lehrperson zwingen, die Note zu ändern', kw: ['Berufung', 'Note', 'Zeugnis', 'Schulnachricht', 'Beurteilung'] },
+    { q: 'Ein 14-jähriger Schüler möchte einen Freigegenstand besuchen, seine Eltern sind dagegen. Wer entscheidet?', a: 'Der Schüler kann sich selbst zur Teilnahme anmelden', f: 'Die Eltern entscheiden', f2: 'Der Schulleiter entscheidet', f3: 'Die Klassenkonferenz entscheidet', kw: ['Freigegenstand', 'Anmeldung', 'teilnehmen', 'Schüler'] },
+    { q: 'Eine Lehrerin möchte Tablets im Unterricht einsetzen. Was muss sie beachten?', a: 'Digitale Endgeräte dürfen eingesetzt werden, wenn sie dem Lehrplan entsprechen und datenschutzkonform sind', f: 'Digitale Geräte sind im Unterricht grundsätzlich verboten', f2: 'Nur der Schulleiter kann den Einsatz digitaler Geräte erlauben', f3: 'Es dürfen nur Geräte der Schule verwendet werden', kw: ['digital', 'Endgerät', 'IKT', 'Tablet'] },
+    { q: 'Ein Schüler möchte an einem Samstag eine Schularbeit nachschreiben. Darf er das?', a: 'Nein – an Samstagen, Sonn- und Feiertagen dürfen keine Hausübungen aufgegeben werden', f: 'Ja, wenn alle Beteiligten zustimmen', f2: 'Ja, am Samstag ist Unterricht möglich', f3: 'Ja, mit Genehmigung des Schulleiters', kw: ['Samstag', 'Sonntag', 'Feiertag', 'Hausübung'] },
+    { q: 'Eine Schülerin ist krank am Tag der Schularbeit. Muss sie sofort ein ärztliches Attest vorlegen?', a: 'Nein – die Vorschriften über das Fernbleiben von der Schule (§ 45) regeln, wann ein Attest nötig ist', f: 'Ja, bei Schularbeiten immer', f2: 'Ja, innerhalb von 24 Stunden', f3: 'Nein, ein Attest ist nie erforderlich', kw: ['Fernbleiben', 'Attest', 'ärztlich', 'krank'] },
+    { q: 'Ein Lehrer möchte Bildungsstandards-Tests durchführen. Dürfen die Ergebnisse benotet werden?', a: 'Nein – Kompetenzerhebungen fließen als Informationsfeststellungen nicht in die Leistungsbeurteilung ein', f: 'Ja, die Ergebnisse zählen wie Schularbeiten', f2: 'Ja, wenn der Lehrer das möchte', f3: 'Nur wenn die Schulkonferenz zustimmt', kw: ['Bildungsstandard', 'Kompetenzerhebung', 'Leistungsbeurteilung'] },
+    { q: 'Ein Schulleiter möchte eine neue schulautonome Profilbildung einführen. Was ist zu beachten?', a: 'Die schulautonomen Reihungskriterien müssen für alle Bewerber in gleicher Weise gelten', f: 'Der Schulleiter kann das allein entscheiden', f2: 'Die Eltern müssen zustimmen', f3: 'Nur die Bildungsdirektion darf das festlegen', kw: ['schulautonom', 'Profilbildung', 'Reihungskriterien', 'Aufnahme'] },
+    // Allgemeine Szenarien (passen zu vielen Paragraphen)
+    { q: 'Eine Junglehrerin fragt sich: Für welche Schulen gilt das Schulunterrichtsgesetz (SchUG) eigentlich?', a: 'Für öffentliche und mit Öffentlichkeitsrecht ausgestattete Schulen der im Schulorganisationsgesetz geregelten Schularten', f: 'Nur für öffentliche Schulen', f2: 'Nur für Pflichtschulen', f3: 'Für alle Schulen in Österreich inklusive Privatschulen ohne Öffentlichkeitsrecht', kw: ['Geltungsbereich', 'Schulorganisationsgesetz', 'öffentlichen', 'öffentlich'] },
+    { q: 'Im Lehrerzimmer diskutieren Kollegen: „Das SchUG gilt für alle Schulen in Österreich.“ Stimmt das?', a: 'Nein – es gilt nur für öffentliche und mit Öffentlichkeitsrecht ausgestattete Schulen bestimmter Schularten', f: 'Ja, für alle Schulen', f2: 'Ja, aber nur für Pflichtschulen', f3: 'Nein, es gilt nur für AHS und BMHS', kw: ['Geltungsbereich', 'gilt', 'Schularten'] },
+    { q: 'Die Schulleitung fragt: „Ab wann zählt ein Schulcluster als eigene Schule?“ Was sagt das SchUG?', a: 'Bei Schulclustern ist unter Schulleiter der Leiter des Schulclusters zu verstehen', f: 'Jede Schule im Cluster ist eigenständig', f2: 'Ein Cluster ist keine rechtliche Einheit', f3: 'Der Cluster hat keinen eigenen Leiter', kw: ['Schulcluster', 'Cluster', 'Bereichsleiter'] },
+    { q: 'Ein Kollege sagt: „Personenbezogene Bezeichnungen im Gesetz gelten nur in männlicher Form.“ Was sagt das SchUG?', a: 'Das stimmt nicht – § 2a stellt klar, dass sie auch in weiblicher Form gelten', f: 'Das stimmt – nur männlich', f2: 'Das Gesetz verwendet nur die weibliche Form', f3: 'Das Gesetz enthält dazu keine Regelung', kw: ['personenbezogene', 'weiblichen', 'Form', 'Bezeichnungen'] },
+    { q: 'Ein Lehrer fragt: „Was ist eine abschließende Prüfung im Sinne des SchUG?“', a: 'Reifeprüfung, Reife- und Diplomprüfung, Diplomprüfung und Abschlussprüfung', f: 'Nur die Reifeprüfung (Matura)', f2: 'Nur die Abschlussprüfung an berufsbildenden Schulen', f3: 'Jede Prüfung, die ein Schuljahr abschließt', kw: ['abschließende', 'Prüfung', 'Reifeprüfung', 'Diplomprüfung'] },
+    { q: 'Eine Direktorin möchte wissen: Fällt eine höhere land- und forstwirtschaftliche Lehranstalt auch unter das SchUG?', a: 'Ja – das SchUG gilt auch für diese Schulen (§ 1 Abs. 2)', f: 'Nein, dafür gibt es ein eigenes Gesetz', f2: 'Nur teilweise', f3: 'Nur wenn sie öffentlich ist', kw: ['land', 'forstwirtschaftlich', 'Lehranstalt', 'gilt'] },
+    { q: 'Eine Lehrerin an einer Privatschule mit Öffentlichkeitsrecht: „Gilt das SchUG auch für mich?“', a: 'Ja – wenn die Privatschule mit Öffentlichkeitsrecht ausgestattet ist, gilt das SchUG', f: 'Nein, Privatschulen haben ihr eigenes Gesetz', f2: 'Nur die Bestimmungen über Prüfungen', f3: 'Nein, Privatschulen sind ausgenommen', kw: ['Privatschulen', 'Öffentlichkeitsrecht', 'gilt', 'Schularten'] },
+    { q: 'Ein Schulleiter fragt: „Was ist die Aufgabe der österreichischen Schule, die das SchUG konkretisiert?“', a: 'Das SchUG regelt die innere Ordnung des Schulwesens als Grundlage des Zusammenwirkens von Lehrern, Schülern und Erziehungsberechtigten', f: 'Die Verwaltung der Schulen', f2: 'Die Festlegung der Lehrpläne', f3: 'Die Ausbildung der Lehrer', kw: ['Aufgabe', 'österreichischen', 'Schule', 'innere Ordnung', 'Zusammenwirken'] },
+    { q: 'Ein Lehrer wird gefragt: „Wer ist im schulrechtlichen Sinn ein Lehrer?“', a: 'Lehrer sind auch Lehrbeauftragte, sofern nichts anderes angeordnet wird (§ 2b Abs. 2)', f: 'Nur vollzeitbeschäftigte Pädagogen mit Lehramtsstudium', f2: 'Nur Beamte im Schuldienst', f3: 'Jeder, der unterrichtet, auch wenn kein Lehramt', kw: ['Lehrer', 'Lehrbeauftragte', 'angeordnet', 'verstehen'] },
+    { q: 'Eine Schülerin ist schwanger und möchte weiterhin die Schule besuchen. Gilt das SchUG hier?', a: 'Ja – das SchUG gilt für alle Schüler, unabhängig von persönlichen Umständen', f: 'Nein, Schwangerschaft ist ein Ausschlussgrund', f2: 'Die Schülerin muss die Schule wechseln', f3: 'Nur wenn sie gesundheitlich dazu in der Lage ist', kw: ['gilt', 'Schüler', 'Schule', 'öffentlichen'] },
+    { q: 'Eine Lehrerin verwendet in ihrem Unterricht konsequent die weibliche Form (Schülerinnen). Ist das rechtlich korrekt?', a: 'Ja – personenbezogene Bezeichnungen gelten jeweils auch in ihrer weiblichen Form (§ 2a)', f: 'Nein, es muss die männliche Form verwendet werden', f2: 'Nur wenn die Schule das beschließt', f3: 'Das ist nicht geregelt', kw: ['personenbezogene', 'weiblichen', 'Form', 'Bezeichnungen'] },
+    { q: 'Die Schulaufsicht fragt nach: „Dürfen wir in schriftlichen Dokumenten nur die männliche Form verwenden?“', a: 'Nein – das Gesetz stellt klar, dass beide Geschlechter gemeint sind', f: 'Ja, das ist üblich und rechtlich zulässig', f2: 'Nur in Gesetzestexten ist die weibliche Form erlaubt', f3: 'Das ist Sache der einzelnen Schule', kw: ['personenbezogene', 'weiblichen', 'männliche', 'Bezeichnungen'] },
+    { q: 'Ein Schüler sagt: „Ich will nicht, dass meine Lehrerin mit ‚Schülerinnen und Schüler‘ angesprochen wird.“ Was sagt das Gesetz?', a: 'Das Gesetz sieht beide Formen als gleichwertig vor – die Verwendung ist zulässig', f: 'Der Schüler hat Recht, es muss die männliche Form verwendet werden', f2: 'Darüber entscheidet die Schulkonferenz', f3: 'Das Gesetz enthält dazu keine Aussage', kw: ['personenbezogene', 'Form', 'weiblichen', 'gilt'] },
+    { q: 'Eine Lehrerin fragt: „Was ist eigentlich der Unterschied zwischen SchOG und SchUG?“', a: 'Das SchOG regelt die Schulorganisation (Schularten, Lehrpläne), das SchUG die innere Ordnung und den Unterrichtsbetrieb', f: 'Es gibt keinen Unterschied, es ist dasselbe Gesetz', f2: 'Das SchUG ist neuer und ersetzt das SchOG', f3: 'Das SchOG gilt nur für Pflichtschulen', kw: ['Schulorganisationsgesetzes', 'Aufgabe', 'innere Ordnung', 'Schule'] },
+    { q: 'Eine Direktorin bereitet eine Schulveranstaltung vor und fragt: „Was genau regelt das SchUG eigentlich?“', a: 'Die innere Ordnung des Schulwesens als Grundlage des Zusammenwirkens von Lehrern, Schülern und Erziehungsberechtigten (§ 2)', f: 'Die Lehrpläne und Stundentafeln', f2: 'Die Besoldung der Lehrer', f3: 'Die Schulgebäudeverwaltung', kw: ['innere Ordnung', 'Schulwesens', 'Schule', 'Zusammenwirkens'] },
+  ];
+
+  for (const pf of shuffle(praxisFaelle)) {
+    if (questions.filter(q => q.type === 'praxisfall').length >= 4) break;
+    const textLower = text.toLowerCase();
+    const matches = pf.kw.filter(kw => textLower.includes(kw.toLowerCase()));
+    if (matches.length >= 2) { // at least 2 keywords must match
+      questions.push(makeQuestion(pf.q, pf.a, [pf.f, pf.f2, pf.f3],
+        `Stell dir vor, du stehst als Lehrkraft vor dieser Situation. Was sagt das SchUG dazu?`,
+        `Gemäß § ${num} ist die richtige Antwort: „${pf.a}“.`
+      ));
+    }
+  }
+
   return shuffle(questions).slice(0, 15);
-  // Goal: categories with 3+ paragraphs get ~30-60 questions ✓
 }
 
 // ─── BUILD OUTPUT ───
-// ─── CATEGORY-LEVEL QUESTIONS ───
-function generateCategoryQuestions(catTitle, paragraphs) {
-  const questions = [];
-  const paras = paragraphs.filter(p => p.title && p.text.length > 30);
-  
-  if (paras.length < 2) return questions;
-  
-  // Question type: Match paragraph number to topic
-  if (paras.length >= 2) {
-    for (let i = 0; i < Math.min(3, paras.length); i++) {
-      const correctPara = paras[i];
-      const wrongParas = shuffle(paras.filter(p => p.number !== correctPara.number)).slice(0, 3);
-      while (wrongParas.length < 3) {
-        wrongParas.push({ number: '99', title: 'Nicht im Gesetz' });
-      }
-      questions.push(makeQuestion(
-        `Welcher Paragraph innerhalb der Kategorie "${catTitle}" regelt "${correctPara.title}"?`,
-        `§ ${correctPara.number}`,
-        wrongParas.map(p => `§ ${p.number}`),
-        `Überlege, welche Paragraphennummer zum Thema "${correctPara.title}" gehört.`,
-        `"${correctPara.title}" ist in § ${correctPara.number} geregelt.`
-      ));
-    }
-  }
-  
-  // Question type: Which paragraph belongs to which category
-  const sampleParas = shuffle(paras).slice(0, 3);
-  for (const p of sampleParas) {
-    const otherCats = shuffle(CATEGORIES.filter(c => c.title !== catTitle)).slice(0, 3);
-    questions.push(makeQuestion(
-      `In welcher Kategorie findest du § ${p.number} ("${p.title}")?`,
-      catTitle,
-      otherCats.map(c => c.title),
-      `§ ${p.number} passt thematisch zu einer bestimmten Kategorie.`,
-      `§ ${p.number} ("${p.title}") gehört zur Kategorie "${catTitle}".`
-    ));
-  }
-  
-  // Question type: What does NOT belong to this category
-  const otherCatParas = [];
-  for (const c of CATEGORIES) {
-    if (c.title !== catTitle && c.paragraphs.length > 0) {
-      const idx = parseInt(c.paragraphs[Math.floor(Math.random() * c.paragraphs.length)]);
-      const p = allParagraphs.find(p => p.number === String(idx));
-      if (p && p.title) otherCatParas.push(p);
-    }
-  }
-  const realParas = shuffle(paras).slice(0, 3);
-  const fakePara = shuffle(otherCatParas)[0];
-  if (realParas.length >= 3 && fakePara) {
-    const fakeOpt = `§ ${fakePara.number}: ${fakePara.title}`;
-    questions.push(makeQuestionWithOpts(
-      `Welcher Paragraph gehört NICHT zur Kategorie "${catTitle}"?`,
-      [...realParas.map(p => `§ ${p.number}: ${p.title}`), fakeOpt],
-      fakeOpt,
-      `Drei Paragraphen gehören zur genannten Kategorie, einer nicht.`,
-      `§ ${fakePara.number} ("${fakePara.title}") gehört nicht zur Kategorie "${catTitle}", sondern zu einer anderen.`
-    ));
-  }
-  
-  return questions;
-}
 
 const categoryMap = {};
 for (const cat of CATEGORIES) {
@@ -709,21 +492,6 @@ for (const p of allParagraphs) {
   if (catId) {
     p.questions = generateQuestions(p);
     categoryMap[catId].paragraphs.push(p);
-  }
-}
-
-// Add category-level questions
-for (const cat of CATEGORIES) {
-  const catData = categoryMap[cat.id];
-  const paras = catData.paragraphs;
-  const catQuestions = generateCategoryQuestions(cat.title, paras);
-  // Shuffle cat questions and add a few
-  const shuffled = shuffle(catQuestions);
-  for (let i = 0; i < Math.min(15, shuffled.length); i++) {
-    // Add to a random paragraph or just to the category
-    if (paras.length > 0) {
-      paras[i % paras.length].questions.push(shuffled[i]);
-    }
   }
 }
 
